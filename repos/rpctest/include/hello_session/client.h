@@ -44,10 +44,17 @@ struct Hello::Session_client : Genode::Rpc_client<Session>
 	{
 		return call<Rpc_add>(a, b);
 	}
+
 	Genode::Ram_dataspace_capability dataspace() override
 	{
 		return call<Rpc_dataspace>();
 	}
+
+	int send2server(int pos) override
+	{
+		return call<Rpc_send2server>(pos);
+	}
+
 };
 
 #endif /* _INCLUDE__HELLO_SESSION_H__CLIENT_H_ */

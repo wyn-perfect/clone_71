@@ -36,7 +36,10 @@ void Component::construct(Genode::Env &env)
 	//addr_t没法直接用，类型转换一下
 	int* qq = (int*) q;
 	//qq对应的物理地址就是服务端dataspace的地址
-	Genode::log(qq[0]);
+	Genode::log("get dataspace head ", qq[0]);
+
+	qq[19] = 1919810;
+	hello.send2server(19);
 
 	Genode::log("hello test completed");
 }

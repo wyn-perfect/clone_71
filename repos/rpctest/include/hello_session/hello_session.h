@@ -37,6 +37,7 @@ struct Hello::Session : Genode::Session
 	virtual void say_hello() = 0;
 	virtual int add(int a, int b) = 0;
 	virtual Genode::Ram_dataspace_capability dataspace() = 0;
+	virtual int send2server(int pos) = 0;
 
 	/*******************
 	 ** RPC interface **
@@ -45,7 +46,9 @@ struct Hello::Session : Genode::Session
 	GENODE_RPC(Rpc_say_hello, void, say_hello);
 	GENODE_RPC(Rpc_add, int, add, int, int);
 	GENODE_RPC(Rpc_dataspace, Genode::Ram_dataspace_capability, dataspace);	
-	GENODE_RPC_INTERFACE(Rpc_say_hello, Rpc_add, Rpc_dataspace);
+	GENODE_RPC(Rpc_send2server, int, send2server, int);
+	GENODE_RPC_INTERFACE(Rpc_say_hello, Rpc_add, Rpc_dataspace,
+						Rpc_send2server);
 };
 
 #endif /* _INCLUDE__HELLO_SESSION__HELLO_SESSION_H_ */

@@ -49,6 +49,12 @@ struct Hello::Session_component : Genode::Rpc_object<Session>
 		Genode::log("cap in server is ", _ds.cap());
 		return _ds.cap();
 	}
+
+	int send2server(int pos) override {
+		int* p = _ds.local_addr<int>();
+		Genode::log("the received message is ", p[pos]);
+		return 0;
+	}
 };
 
 
