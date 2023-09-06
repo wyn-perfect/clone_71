@@ -1,7 +1,9 @@
 /*
- * \brief  Client-side interface of the Hello service
+ * \brief  Client-side interface of the RPC service
  * \author Björn Döbel
- * \date   2008-03-20
+ * \author Minyi
+ * \author Zhenlin
+ * \date   2023-09
  */
 
 /*
@@ -11,10 +13,10 @@
  * under the terms of the GNU Affero General Public License version 3.
  */
 
-#ifndef _INCLUDE__HELLO_SESSION_H__CLIENT_H_
-#define _INCLUDE__HELLO_SESSION_H__CLIENT_H_
+#ifndef _INCLUDE__RPCPLUS_SESSION_H__CLIENT_H_
+#define _INCLUDE__RPCPLUS_SESSION_H__CLIENT_H_
 
-#include <hello_session/hello_session.h>
+#include <rpcplus_session/rpcplus_session.h>
 #include <base/rpc_client.h>
 #include <base/log.h>
 #include <base/session_object.h>
@@ -25,10 +27,10 @@
 #include <dataspace/client.h>
 
 
-namespace Hello { struct Session_client; }
+namespace RPCplus { struct Session_client; }
 
 
-struct Hello::Session_client : Genode::Rpc_client<Session>
+struct RPCplus::Session_client : Genode::Rpc_client<Session>
 {
 	Session_client(Genode::Capability<Session> cap)
 	: Genode::Rpc_client<Session>(cap) { }
@@ -50,11 +52,11 @@ struct Hello::Session_client : Genode::Rpc_client<Session>
 		return call<Rpc_dataspace>();
 	}
 
-	int send2server(int pos) override
+	int send2server() override
 	{
-		return call<Rpc_send2server>(pos);
+		return call<Rpc_send2server>();
 	}
 
 };
 
-#endif /* _INCLUDE__HELLO_SESSION_H__CLIENT_H_ */
+#endif /* _INCLUDE__RPCPLUS_SESSION_H__CLIENT_H_ */

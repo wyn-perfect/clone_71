@@ -1,3 +1,3 @@
-TARGET = hello_server
+TARGET = rpc_server
 SRC_CC = main.cc
 LIBS   = base

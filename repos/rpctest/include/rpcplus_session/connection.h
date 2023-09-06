@@ -1,7 +1,9 @@
 /*
- * \brief  Connection to Hello service
+ * \brief  Connection to RPCplus service
  * \author Norman Feske
- * \date   2008-11-10
+ * \author Minyi
+ * \author Zhenlin
+ * \date   2023-09
  */
 
 /*
@@ -11,25 +13,25 @@
  * under the terms of the GNU Affero General Public License version 3.
  */
 
-#ifndef _INCLUDE__HELLO_SESSION__CONNECTION_H_
-#define _INCLUDE__HELLO_SESSION__CONNECTION_H_
+#ifndef _INCLUDE__RPCPLUS_SESSION__CONNECTION_H_
+#define _INCLUDE__RPCPLUS_SESSION__CONNECTION_H_
 
-#include <hello_session/client.h>
+#include <rpcplus_session/client.h>
 #include <base/connection.h>
 
-namespace Hello { struct Connection; }
+namespace RPCplus { struct Connection; }
 
 
-struct Hello::Connection : Genode::Connection<Session>, Session_client
+struct RPCplus::Connection : Genode::Connection<Session>, Session_client
 {
 	Connection(Genode::Env &env)
 	:
 		/* create session */
-		Genode::Connection<Hello::Session>(env, Label(),
+		Genode::Connection<RPCplus::Session>(env, Label(),
 		                                   Ram_quota { 8*1024 }, Args()),
 		/* initialize RPC interface */
 		Session_client(cap())
 	{ }
 };
 
-#endif /* _INCLUDE__HELLO_SESSION__CONNECTION_H_ */
+#endif /* _INCLUDE__RPCPLUS_SESSION__CONNECTION_H_ */

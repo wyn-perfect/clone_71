@@ -1,8 +1,10 @@
 /*
- * \brief  Test client for the Hello RPC interface
+ * \brief  Test client for our RPC interface
  * \author Björn Döbel
  * \author Norman Feske
- * \date   2008-03-20
+ * \author Minyi
+ * \author Zhenlin
+ * \date   2023-09
  */
 
 /*
@@ -14,32 +16,35 @@
 
 #include <base/component.h>
 #include <base/log.h>
-#include <hello_session/connection.h>
+#include <rpcplus_session/connection.h>
 #include <base/attached_ram_dataspace.h>
 
 
 void Component::construct(Genode::Env &env)
 {
-	Hello::Connection hello(env);
+	RPCplus::Connection rpc(env);
 
-	hello.say_hello();
+	rpc.say_hello();
 
-	int const sum = hello.add(2, 5);
+	int const sum = rpc.add(2, 5);
 	Genode::log("added 2 + 5 = ", sum);
+
 	//获取服务端dataspace
-	Genode::Ram_dataspace_capability dscap = hello.dataspace();
+	Genode::Ram_dataspace_capability dscap = rpc.dataspace();
 	Genode::log("cap in client is ", dscap);
 	//指定dataspace的虚拟内存地址q
-	Genode::addr_t q = 0x7000;
+	//Now a fixed high addr, free of conflict
+	Genode::addr_t q = 0x60000000;
 	//绑定
 	env.rm().attach_at(dscap, q);
 	//addr_t没法直接用，类型转换一下
 	int* qq = (int*) q;
 	//qq对应的物理地址就是服务端dataspace的地址
 	Genode::log("get dataspace head ", qq[0]);
-
+	//Write some reply to the server
+	qq[0] = 19;
 	qq[19] = 1919810;
-	hello.send2server(19);
+	rpc.send2server();
 
-	Genode::log("hello test completed");
+	Genode::log("rpc test completed");
 }

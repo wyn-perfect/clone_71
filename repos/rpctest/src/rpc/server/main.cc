@@ -1,8 +1,9 @@
 /*
- * \brief  Main program of the Hello server
+ * \brief  Main program of the RPC server
  * \author Björn Döbel
- * \author Norman Feske
- * \date   2008-03-20
+ * \author Minyi
+ * \author Zhenlin
+ * \date   2023-09
  */
 
 /*
@@ -16,7 +17,7 @@
 #include <base/log.h>
 #include <base/heap.h>
 #include <root/component.h>
-#include <hello_session/hello_session.h>
+#include <rpcplus_session/rpcplus_session.h>
 #include <base/rpc_server.h>
 #include <base/attached_ram_dataspace.h>
 #include <base/session_object.h>
@@ -24,18 +25,20 @@
 #include <base/rpc_server.h>
 #include <dataspace/client.h>
 
-namespace Hello {
+const int RPC_BUFFER_LEN = 4096 * 16; 
+
+namespace RPCplus {
 	struct Session_component;
 	struct Root_component;
 	struct Main;
 }
 
 
-struct Hello::Session_component : Genode::Rpc_object<Session>
+struct RPCplus::Session_component : Genode::Rpc_object<Session>
 {
 	//服务端创建一块ram dataspace
 	Genode::Attached_ram_dataspace _ds;
-	Session_component(Genode::Env &env):_ds(env.ram(), env.rm(), sizeof(int)*100){
+	Session_component(Genode::Env &env):_ds(env.ram(), env.rm(), RPC_BUFFER_LEN){
 		int* p = _ds.local_addr<int>();
 		p[0] = 114514;
 	}
@@ -50,15 +53,15 @@ struct Hello::Session_component : Genode::Rpc_object<Session>
 		return _ds.cap();
 	}
 
-	int send2server(int pos) override {
+	int send2server() override {
 		int* p = _ds.local_addr<int>();
-		Genode::log("the received message is ", p[pos]);
+		Genode::log("the received message is ", p[p[0]]);
 		return 0;
 	}
 };
 
 
-class Hello::Root_component
+class RPCplus::Root_component
 :
 	public Genode::Root_component<Session_component>
 	
@@ -70,7 +73,7 @@ class Hello::Root_component
 
 		Session_component *_create_session(const char *) override
 		{
-			Genode::log("creating hello session");
+			Genode::log("creating rpcplus session");
 			//把env作为参数传给Session_component，Session_component才能创建Attached_ram_dataspace
 			return new (md_alloc()) Session_component(_env);
 		}
@@ -86,7 +89,7 @@ class Hello::Root_component
 };
 
 
-struct Hello::Main
+struct RPCplus::Main
 {
 	Genode::Env &env;
 
@@ -95,7 +98,7 @@ struct Hello::Main
 	 * can release objects separately.
 	 */
 	Genode::Sliced_heap sliced_heap { env.ram(), env.rm() };
-	Hello::Root_component root { env, env.ep(), sliced_heap };
+	RPCplus::Root_component root { env, env.ep(), sliced_heap };
 
 	Main(Genode::Env &env) : env(env)
 	{
@@ -110,5 +113,5 @@ struct Hello::Main
 
 void Component::construct(Genode::Env &env)
 {
-	static Hello::Main main(env);
+	static RPCplus::Main main(env);
 }
