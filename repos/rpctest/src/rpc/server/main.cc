@@ -22,10 +22,13 @@
 #include <base/attached_ram_dataspace.h>
 #include <base/session_object.h>
 #include <dataspace/capability.h>
-#include <base/rpc_server.h>
 #include <dataspace/client.h>
+#include <timer_session/connection.h>
 
-const int RPC_BUFFER_LEN = 4096 * 16; 
+
+const int RPC_BUFFER_LEN = 4096 * 16; // 64KB
+const int MAINMEM_STORE_LEN = 4096 * 1024 * 25; // 100 MB
+
 
 namespace RPCplus {
 	struct Session_component;
@@ -36,26 +39,41 @@ namespace RPCplus {
 
 struct RPCplus::Session_component : Genode::Rpc_object<Session>
 {
-	//服务端创建一块ram dataspace
-	Genode::Attached_ram_dataspace _ds;
-	Session_component(Genode::Env &env):_ds(env.ram(), env.rm(), RPC_BUFFER_LEN){
-		int* p = _ds.local_addr<int>();
+	//服务端创建一块ram dataspace，用于RPC消息
+	Genode::Attached_ram_dataspace rpc_buffer;
+	Genode::Attached_ram_dataspace &storage;
+
+	Session_component(Genode::Env &env, Genode::Attached_ram_dataspace &main_store)
+	:	rpc_buffer(env.ram(), env.rm(), RPC_BUFFER_LEN),
+		storage(main_store)
+	{	
+		void* storage_ptr = storage.local_addr<int>();
+		Genode::log("Server local storage addr: ", storage_ptr);
+		int* p = rpc_buffer.local_addr<int>();
 		p[0] = 114514;
+		Genode::log("RPC buffer init.");
 	}
+
 	void say_hello() override {
-		Genode::log("I am here... Hello."); }
+		Genode::log("I am here... Hello."); 
+	}
 
 	int add(int a, int b) override {
-		return a + b; }
+		return a + b; 
+	}
+
 	//把这块dataspace的cap返回给客户端
 	Genode::Ram_dataspace_capability dataspace() override {
-		Genode::log("cap in server is ", _ds.cap());
-		return _ds.cap();
+		Genode::log("cap in server is ", rpc_buffer.cap());
+		return rpc_buffer.cap();
 	}
 
 	int send2server() override {
-		int* p = _ds.local_addr<int>();
-		Genode::log("the received message is ", p[p[0]]);
+		int* p = rpc_buffer.local_addr<int>();
+		int* storage_int = storage.local_addr<int>();
+		Genode::log("message init for mem_storage: ", storage_int[0]);
+		storage_int[0] = p[p[0]];
+		Genode::log("message stored to mem_storage: ", storage_int[0]);
 		return 0;
 	}
 };
@@ -69,20 +87,27 @@ class RPCplus::Root_component
 	private:
 		//加个env
 		Genode::Env &_env;
+	
 	protected:
 
 		Session_component *_create_session(const char *) override
 		{
 			Genode::log("creating rpcplus session");
 			//把env作为参数传给Session_component，Session_component才能创建Attached_ram_dataspace
-			return new (md_alloc()) Session_component(_env);
+			//we also add the main memory store space to the session
+			return new (md_alloc()) Session_component(_env, _main_store);
 		}
-	public:
 	
+	public:
 
-		Root_component(Genode::Env &env, Genode::Entrypoint &ep,
-		               Genode::Allocator &alloc)
-		:	 Genode::Root_component<Session_component>(ep, alloc), _env(env) //这里把env传进去
+		//handle the main memory dataspace
+		Genode::Attached_ram_dataspace &_main_store;
+
+		Root_component(Genode::Env &env, Genode::Attached_ram_dataspace &main_store,
+					Genode::Entrypoint &ep, Genode::Allocator &alloc)
+		:	Genode::Root_component<Session_component>(ep, alloc), 
+			_env(env), //这里把env传进去
+			_main_store(main_store)
 		{
 			Genode::log("creating root component");
 		}
@@ -92,16 +117,21 @@ class RPCplus::Root_component
 struct RPCplus::Main
 {
 	Genode::Env &env;
+	Timer::Connection &timer;
+
+	Genode::Attached_ram_dataspace mem_store{ env.ram(), env.rm(), MAINMEM_STORE_LEN };
 
 	/*
 	 * A sliced heap is used for allocating session objects - thereby we
 	 * can release objects separately.
 	 */
 	Genode::Sliced_heap sliced_heap { env.ram(), env.rm() };
-	RPCplus::Root_component root { env, env.ep(), sliced_heap };
+	RPCplus::Root_component root { env, mem_store, env.ep(), sliced_heap };
 
-	Main(Genode::Env &env) : env(env)
+	Main(Genode::Env &env, Timer::Connection &timer) 
+	:	env(env), timer(timer)
 	{
+		Genode::log("Time mem allocation ", timer.curr_time().trunc_to_plain_ms());
 		/*
 		 * Create a RPC object capability for the root interface and
 		 * announce the service to our parent.
@@ -112,6 +142,7 @@ struct RPCplus::Main
 
 
 void Component::construct(Genode::Env &env)
-{
-	static RPCplus::Main main(env);
+{	
+	Timer::Connection _timer(env);
+	static RPCplus::Main main(env, _timer);
 }
