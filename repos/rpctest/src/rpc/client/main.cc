@@ -18,11 +18,16 @@
 #include <base/log.h>
 #include <rpcplus_session/connection.h>
 #include <base/attached_ram_dataspace.h>
+#include <timer_session/connection.h>
 
 
 void Component::construct(Genode::Env &env)
 {
 	RPCplus::Connection rpc(env);
+	Timer::Connection _timer(env);
+
+	Genode::Milliseconds time_beg = _timer.curr_time().trunc_to_plain_ms();
+	Genode::log("Client test start at ", time_beg);
 
 	rpc.say_hello();
 
@@ -40,11 +45,14 @@ void Component::construct(Genode::Env &env)
 	//addr_t没法直接用，类型转换一下
 	int* qq = (int*) q;
 	//qq对应的物理地址就是服务端dataspace的地址
-	Genode::log("get dataspace head ", qq[0]);
+	Genode::log("get rpc buffer head ", qq[0]);
 	//Write some reply to the server
 	qq[0] = 19;
 	qq[19] = 1919810;
 	rpc.send2server();
+
+	Genode::Milliseconds time_end = _timer.curr_time().trunc_to_plain_ms();
+	Genode::log("Client test end at ", time_end);
 
 	Genode::log("rpc test completed");
 }

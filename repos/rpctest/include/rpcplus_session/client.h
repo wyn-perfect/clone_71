@@ -21,7 +21,6 @@
 #include <base/log.h>
 #include <base/session_object.h>
 #include <base/attached_ram_dataspace.h>
-#include <base/session_object.h>
 #include <dataspace/capability.h>
 #include <base/rpc_server.h>
 #include <dataspace/client.h>
