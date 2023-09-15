@@ -22,6 +22,7 @@
 
 
 const int LOOP_NUM = 1 << 17;
+const int CLIENT_ID = 2;
 
 
 void Component::construct(Genode::Env &env)
@@ -59,11 +60,11 @@ void Component::construct(Genode::Env &env)
 	float thrput23 = (float)LOOP_NUM / (float)time23 * 1000;
 	Genode::log("add_int throughput is ", thrput23, "/second");
 
-	s = rpc.set_storehead(0);
+	s = rpc.set_storehead(CLIENT_ID, 0);
 	Genode::Milliseconds time_4 = _timer.curr_time().trunc_to_plain_ms();
 	Genode::log("set_storehead start at ", time_4);
 	for (int i = 0; i < LOOP_NUM; ++i){
-		s = rpc.set_storehead(i);
+		s = rpc.set_storehead(CLIENT_ID, i);
 	}
 	Genode::Milliseconds time_5 = _timer.curr_time().trunc_to_plain_ms();
 	Genode::log("set_storehead end at ", time_5);
@@ -71,15 +72,15 @@ void Component::construct(Genode::Env &env)
 	float thrput45 = (float)LOOP_NUM / (float)time45 * 1000;
 	Genode::log("set_storehead throughput is ", thrput45, "/second");
 
-	Genode::Ram_dataspace_capability bufcap = rpc.get_RPCbuffer();
+	Genode::Ram_dataspace_capability bufcap = rpc.get_RPCbuffer(CLIENT_ID);
 	env.rm().attach_at(bufcap, 0x60000000);
 	int* buf = (int*)0x60000000;
-	rpc.get_storehead(0);
+	rpc.get_storehead(CLIENT_ID, 0);
 	Genode::log("get rpc buffer head ", buf[0]);
 	Genode::Milliseconds time_6 = _timer.curr_time().trunc_to_plain_ms();
 	Genode::log("get_storehead start at ", time_6);
 	for (int i = 0; i < LOOP_NUM; ++i){
-		rpc.get_storehead(i);
+		rpc.get_storehead(CLIENT_ID, i);
 		s = buf[0];
 	}
 	Genode::Milliseconds time_7 = _timer.curr_time().trunc_to_plain_ms();
@@ -91,5 +92,5 @@ void Component::construct(Genode::Env &env)
 	Genode::Milliseconds time_end = _timer.curr_time().trunc_to_plain_ms();
 	Genode::log("Client test end at ", time_end);
 
-	Genode::log("rpc test completed");
+	Genode::log("benchmark completed");
 }
