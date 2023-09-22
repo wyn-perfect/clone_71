@@ -38,9 +38,9 @@ struct RPCplus::Session : Genode::Session
 
 	virtual void pure_function() = 0;
 	virtual int add_int(int a, int b) = 0;
-	virtual int set_storehead(int a) = 0;
-	virtual Genode::Ram_dataspace_capability get_RPCbuffer() = 0;
-	virtual int get_storehead(int a) = 0;
+	virtual int set_storehead(int clientID, int a) = 0;
+	virtual Genode::Ram_dataspace_capability get_RPCbuffer(int clientID) = 0;
+	virtual int get_storehead(int clientID, int a) = 0;
 
 	/*******************
 	 ** RPC interface **
@@ -48,9 +48,9 @@ struct RPCplus::Session : Genode::Session
 
 	GENODE_RPC(Rpc_pure_function, void, pure_function);
 	GENODE_RPC(Rpc_add_int, int, add_int, int, int);
-	GENODE_RPC(Rpc_set_storehead, int, set_storehead, int);
-	GENODE_RPC(Rpc_get_RPCbuffer, Genode::Ram_dataspace_capability, get_RPCbuffer);
-	GENODE_RPC(Rpc_get_storehead, int, get_storehead, int);
+	GENODE_RPC(Rpc_set_storehead, int, set_storehead, int, int);
+	GENODE_RPC(Rpc_get_RPCbuffer, Genode::Ram_dataspace_capability, get_RPCbuffer, int);
+	GENODE_RPC(Rpc_get_storehead, int, get_storehead, int, int);
 	GENODE_RPC_INTERFACE(Rpc_pure_function, Rpc_add_int, 
 					Rpc_set_storehead, Rpc_get_RPCbuffer, Rpc_get_storehead);
 };

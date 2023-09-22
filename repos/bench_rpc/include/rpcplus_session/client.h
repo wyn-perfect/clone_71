@@ -44,19 +44,19 @@ struct RPCplus::Session_client : Genode::Rpc_client<Session>
 		return call<Rpc_add_int>(a, b);
 	}
 
-	int set_storehead(int a) override
+	int set_storehead(int clintID, int a) override
 	{
-		return call<Rpc_set_storehead>(a);
+		return call<Rpc_set_storehead>(clintID, a);
 	}
 
-	Genode::Ram_dataspace_capability get_RPCbuffer() override
+	Genode::Ram_dataspace_capability get_RPCbuffer(int clientID) override
 	{
-		return call<Rpc_get_RPCbuffer>();
+		return call<Rpc_get_RPCbuffer>(clientID);
 	}
 
-	int get_storehead(int a) override
+	int get_storehead(int clientID, int a) override
 	{
-		return call<Rpc_get_storehead>(a);
+		return call<Rpc_get_storehead>(clientID, a);
 	}
 
 };
