@@ -8,6 +8,14 @@
 #include <os/reporter.h>
 #include <timer_session/connection.h>
 
+/*
+顺序读写
+对1000个block操作---读：62次/s    写：81次/s
+对100个block操作 ---读：270次/s   写：330次/s
+对10个block操作  ---读：330次/s   写：430次/s
+对1个block操作   ---读：340次/s   写：440次/s
+*/
+
 
 namespace Block_demo {
 
@@ -113,10 +121,6 @@ struct Block_demo::Test
 		 */
 		void completed(Job &job, bool success)
 		{
-			if (_completed == 0)
-			{
-				begin = _timer->curr_time().trunc_to_plain_ms().value;
-			}
 			
 			_completed++;
 			log("job ", job.id, ": ", job.operation(), ", completed");
@@ -127,7 +131,7 @@ struct Block_demo::Test
 			{
 				_completed = 0;
 				end = _timer->curr_time().trunc_to_plain_ms().value;
-				log("Process time: " ,end - begin, "ms", "\nthroughput: ", 1000*loop/(end - begin), " write/s");
+				log("Process time: " ,end - begin, "ms", "\nthroughput: ", 1000*loop/(end - begin), " (operate ", job.operation().count ," blocks)/s");
 			}
 			
 
@@ -173,12 +177,14 @@ struct Block_demo::Test
 			_info = _block->info();
 			log("block size is ", _info.block_size);
 			loop = 100;
+			begin = _timer->curr_time().trunc_to_plain_ms().value;
 			for (int i = 0; i < loop; i++)
 			{
 				_write_buffer[0] = i;
-				_spawn_job(1, 1, Block::Operation::Type::WRITE);
-				_handle_block_io();
+				_spawn_job(1, 1, Block::Operation::Type::READ);
+				
 			}
+			_handle_block_io();
 
 			// for (int i = 0; i < loop; i++)
 			// {
@@ -186,8 +192,6 @@ struct Block_demo::Test
 			// 	_handle_block_io();
 			// }
 			
-			_start_time = _timer->elapsed_ms();
-
 		}
 
 };
