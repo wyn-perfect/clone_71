@@ -26,8 +26,11 @@
 #include <timer_session/connection.h>
 
 
-const int RPC_BUFFER_LEN = 4096 * 16; // 64KB
-const int MAINMEM_STORE_LEN = 4096 * 1024 * 25; // 100 MB
+const int PAGE_SIZE = 4096;
+const int RPC_BUFFER_LEN = PAGE_SIZE * 16; // 64KB
+const int MAINMEM_STORE_LEN = PAGE_SIZE * 1024 * 25; // 100 MB
+
+const int MAINMEM_ALLOC_SLOT = MAINMEM_STORE_LEN / PAGE_SIZE;
 
 
 namespace RPCplus {
@@ -43,15 +46,25 @@ struct RPCplus::Session_component : Genode::Rpc_object<Session>
 	Genode::Attached_ram_dataspace rpc_buffer;
 	Genode::Attached_ram_dataspace &storage;
 
+	genode_uint8_t alloc_slot[MAINMEM_ALLOC_SLOT];
+	genode_uint64_t alloc_id;
+
 	Session_component(Genode::Env &env, Genode::Attached_ram_dataspace &main_store)
 	:	rpc_buffer(env.ram(), env.rm(), RPC_BUFFER_LEN),
-		storage(main_store)
+		storage(main_store),
+		alloc_id(0)
 	{	
 		void* storage_ptr = storage.local_addr<int>();
 		Genode::log("Server local storage addr: ", storage_ptr);
 		int* p = rpc_buffer.local_addr<int>();
 		p[0] = 114514;
 		Genode::log("RPC buffer init.");
+
+		for (int i = 0; i < MAINMEM_ALLOC_SLOT; ++i)
+		{
+			alloc_slot[i] = 0;
+		}
+		Genode::log("alloc slot array init as ", alloc_slot[MAINMEM_ALLOC_SLOT-1]);
 	}
 
 	void say_hello() override {
@@ -74,6 +87,39 @@ struct RPCplus::Session_component : Genode::Rpc_object<Session>
 		Genode::log("message init for mem_storage: ", storage_int[0]);
 		storage_int[0] = p[p[0]];
 		Genode::log("message stored to mem_storage: ", storage_int[0]);
+		return 0;
+	}
+
+	Genode::Ram_dataspace_capability memorycap() override {
+		Genode::log("memory cap in server is ", storage.cap());
+		return storage.cap();
+	}
+
+	RPCplus::AllocRet allocate(genode_uint64_t lens) override {
+		genode_uint64_t p = 0;
+		int page_ptr;
+		for (page_ptr = 0; page_ptr < MAINMEM_ALLOC_SLOT; ++page_ptr){
+			if (alloc_slot[page_ptr] == 0) {
+				Genode::log("server memory allocate find slot ", page_ptr);
+				alloc_slot[page_ptr] = 1;
+				break;
+			}
+		}
+		p = (genode_uint64_t)page_ptr * PAGE_SIZE;
+		alloc_id += 1;
+		RPCplus::AllocRet ret{p, lens, alloc_id};
+		return ret;
+	}
+
+	int free(RPCplus::AllocRet ret) override{
+		int page_ptr = (int)(ret.addr / PAGE_SIZE);
+		int page_cnt = (int)(ret.lent / PAGE_SIZE);
+		int page_tail = (int)(ret.lent % PAGE_SIZE);
+		if (page_tail > 0) page_cnt += 1;
+		Genode::log("memory free at ", page_ptr, ", count ",  page_cnt);
+		for (int i = 0; i < page_cnt; ++i){
+			alloc_slot[page_ptr + i] = 0;
+		}
 		return 0;
 	}
 };

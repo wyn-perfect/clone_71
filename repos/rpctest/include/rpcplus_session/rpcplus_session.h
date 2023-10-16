@@ -27,7 +27,9 @@
 #include <base/rpc_server.h>
 #include <dataspace/client.h>
 
-namespace RPCplus { struct Session; }
+namespace RPCplus { struct Session; struct AllocRet; }
+
+const Genode::addr_t ALLOC_BASE = 0x70000000;
 
 
 struct RPCplus::Session : Genode::Session
@@ -40,6 +42,9 @@ struct RPCplus::Session : Genode::Session
 	virtual int add(int a, int b) = 0;
 	virtual Genode::Ram_dataspace_capability dataspace() = 0;
 	virtual int send2server() = 0;
+	virtual Genode::Ram_dataspace_capability memorycap() = 0;
+	virtual RPCplus::AllocRet allocate(genode_uint64_t lens) = 0;
+	virtual int free(RPCplus::AllocRet ret) = 0;
 
 	/*******************
 	 ** RPC interface **
@@ -49,8 +54,18 @@ struct RPCplus::Session : Genode::Session
 	GENODE_RPC(Rpc_add, int, add, int, int);
 	GENODE_RPC(Rpc_dataspace, Genode::Ram_dataspace_capability, dataspace);	
 	GENODE_RPC(Rpc_send2server, int, send2server);
-	GENODE_RPC_INTERFACE(Rpc_say_hello, Rpc_add, Rpc_dataspace,
-						Rpc_send2server);
+	GENODE_RPC(Rpc_memorycap, Genode::Ram_dataspace_capability, memorycap);	
+	GENODE_RPC(Rpc_allocate, RPCplus::AllocRet, allocate, genode_uint64_t);
+	GENODE_RPC(Rpc_free, int, free, RPCplus::AllocRet);
+	GENODE_RPC_INTERFACE(Rpc_say_hello, Rpc_add, Rpc_dataspace, Rpc_send2server, 
+						Rpc_memorycap, Rpc_allocate, Rpc_free);
+};
+
+struct RPCplus::AllocRet
+{
+	genode_uint64_t addr;
+	genode_uint64_t lent;
+	genode_uint64_t id;
 };
 
 #endif /* _INCLUDE__RPCPLUS_SESSION__RPCPLUS_SESSION_H_ */

@@ -42,7 +42,7 @@ install_config {
 		<resource name="RAM" quantum="32M"/>
 	</start>
 
-	<start name="rpc_client1">
+	<!-- <start name="rpc_client1">
 		<affinity xpos="2" ypos="0" width="1" height="1" />
 		<resource name="RAM" quantum="32M"/>
 	</start>
@@ -50,7 +50,7 @@ install_config {
 	<start name="rpc_client2">
 		<affinity xpos="3" ypos="0" width="1" height="1" />
 		<resource name="RAM" quantum="32M"/>
-	</start>
+	</start> -->
 
 </config>}
 
@@ -62,4 +62,4 @@ build_boot_image { core ld.lib.so init timer rpc_client0 rpc_client1 rpc_client2
 
 append qemu_args " -nographic "
 
-run_genode_until forever
+run_genode_until "hello test completed.*\n" 20

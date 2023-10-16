@@ -51,6 +51,32 @@ void Component::construct(Genode::Env &env)
 	qq[19] = 1919810;
 	rpc.send2server();
 
+
+	char* contents;
+
+	RPCplus::AllocRet mem_0 = rpc.amkos_alloc(env, 4096);
+	Genode::log("memory allocated at: ", mem_0.addr, " +", mem_0.lent);
+	contents = (char*)mem_0.addr;
+	Genode::log("contents[0] is ", contents[0]);
+	contents[0] = 'q';
+	Genode::log("contents[0] is ", contents[0]);
+
+	RPCplus::AllocRet mem_1 = rpc.amkos_alloc(env, 4096);
+	Genode::log("memory allocated at: ", mem_1.addr, " +", mem_1.lent);
+	contents = (char*)mem_1.addr;
+	Genode::log("contents[0] is ", contents[0]);
+	contents[0] = 'q';
+	Genode::log("contents[0] is ", contents[0]);
+
+	rpc.amkos_free(mem_0);
+
+	RPCplus::AllocRet mem_2 = rpc.amkos_alloc(env, 4096);
+	Genode::log("memory allocated at: ", mem_2.addr, " +", mem_2.lent);
+	contents = (char*)mem_2.addr;
+	Genode::log("contents[0] is ", contents[0]);
+	contents[0] = 'q';
+	Genode::log("contents[0] is ", contents[0]);
+
 	Genode::Milliseconds time_end = _timer.curr_time().trunc_to_plain_ms();
 	Genode::log("Client test end at ", time_end);
 

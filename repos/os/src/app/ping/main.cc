@@ -66,7 +66,7 @@ class Main : public Nic_handler,
 		Microseconds                    _period_us     { read_sec_attr(_config, "period_sec", (uint64_t)DEFAULT_PERIOD_SEC) };
 		Constructible<Periodic_timeout> _period        { };
 		Heap                            _heap          { &_env.ram(), &_env.rm() };
-		bool                     const  _verbose       { _config.attribute_value("verbose", false) };
+		bool                     const  _verbose       { _config.attribute_value("verbose", true) };
 		Net::Nic                        _nic           { _env, _heap, *this, _verbose };
 		Ipv4_address             const  _dst_ip        { _config.attribute_value("dst_ip",  Ipv4_address()) };
 		Mac_address                     _dst_mac       { };
@@ -200,6 +200,8 @@ void Main::_handle_ip(Ethernet_frame &eth,
 	    ip.dst() != Ipv4_packet::broadcast())
 	{
 		if (_verbose) {
+			log(ip.dst(), " not equal ", ip_config().interface.address);
+			log(ip.dst(), " not equal ", Ipv4_packet::broadcast());
 			log("bad IP destination"); }
 		return;
 	}
@@ -224,7 +226,7 @@ void Main::_handle_icmp_echo_reply(Ipv4_packet &ip,
 	/* drop packet if our request was no ICMP */
 	if (_protocol != Protocol::ICMP) {
 		if (_verbose) {
-			log("bad IP protocol"); }
+			log("bad IP protocol, ICMP"); }
 		return;
 	}
 	/* check IP source */
@@ -383,7 +385,7 @@ void Main::_handle_udp(Ipv4_packet &ip,
 	/* drop packet if our request was no UDP */
 	if (_protocol != Protocol::UDP) {
 		if (_verbose) {
-			log("bad IP protocol"); }
+			log("bad IP protocol, UDP"); }
 		return;
 	}
 	/* drop packet if UDP checksum is invalid */
