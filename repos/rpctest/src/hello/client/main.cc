@@ -30,7 +30,7 @@ void Component::construct(Genode::Env &env)
 	Genode::Ram_dataspace_capability dscap = hello.dataspace();
 	Genode::log("cap in client is ", dscap);
 	//指定dataspace的虚拟内存地址q
-	Genode::addr_t q = 0x7000;
+	Genode::addr_t q = 0x60000000;
 	//绑定
 	env.rm().attach_at(dscap, q);
 	//addr_t没法直接用，类型转换一下

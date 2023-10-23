@@ -12,7 +12,7 @@ create_boot_directory
 
 install_config {
 <config>
-	<affinity-space width="4" height="1" />
+	<affinity-space width="1" height="1" />
 	<parent-provides>
 		<service name="LOG"/>
 		<service name="PD"/>
@@ -38,7 +38,7 @@ install_config {
 	</start>
 
 	<start name="rpc_client0">
-		<affinity xpos="1" ypos="0" width="1" height="1" />
+		<affinity xpos="0" ypos="0" width="1" height="1" />
 		<resource name="RAM" quantum="32M"/>
 	</start>
 
@@ -58,7 +58,7 @@ install_config {
 # Boot image
 
 
-build_boot_image { core ld.lib.so init timer rpc_client0 rpc_client1 rpc_client2 rpc_server }
+build_boot_image { core ld.lib.so init timer rpc_client0 rpc_server }
 
 append qemu_args " -nographic "
 
