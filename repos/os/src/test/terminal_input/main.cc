@@ -15,6 +15,7 @@
 /* Genode includes */
 #include <base/component.h>
 #include <terminal_session/connection.h>
+#include <timer_session/connection.h>
 
 using namespace Genode;
 
@@ -25,7 +26,12 @@ struct Main
 	char                 read_buffer[256];
 
 	String<128> intro {
-		"--- Terminal echo test started - now you can type characters to be echoed. ---\n" };
+		"--- Terminal echo test started - now you can type characters to be echoed. ---\r\n" };
+	String<255> str256B {
+"111111111111111111111111111111111111111111111111111111111111111\
+1111111111111111111111111111111111111111111111111111111111111111\
+1111111111111111111111111111111111111111111111111111111111111111\
+11111111111111111111111111111111111111111111111111111111111111\n" };
 
 	void handle_read_avail()
 	{
@@ -43,17 +49,34 @@ struct Main
 		}
 		read_buffer[carriage_index] = '\n';
 		read_buffer[carriage_index + 1] = '\0';
-		terminal.write(read_buffer, carriage_index + 1);
+		// terminal.write(read_buffer, carriage_index + 1);
 		// Genode::log(carriage_index);
 		// terminal.write("\n", 2);
+		
+		// Genode::log((const char*)read_buffer);
+		return;
 	}
 
 	Main(Env &env) : terminal(env),
 	                 read_avail(env.ep(), *this, &Main::handle_read_avail)
-	{
+	{	
+		Timer::Connection _timer(env);
+
 		terminal.read_avail_sigh(read_avail);
 		// terminal.write(intro.string(), intro.length() + 1);
-		// terminal.write("123456789\n", 10);
+		terminal.write("123456789\n", 10);
+
+		Genode::log(str256B.string(), "  len=  ", str256B.length());
+
+		Genode::Milliseconds time_beg = _timer.curr_time().trunc_to_plain_ms();
+		Genode::log("Client test start at ", time_beg);
+
+		for (int i = 0; i < 20000; ++i){
+			terminal.write(str256B.string(), str256B.length());
+		}
+
+		Genode::Milliseconds time_end = _timer.curr_time().trunc_to_plain_ms();
+		Genode::log("Client test finish at ", time_end);
 	}
 };
 

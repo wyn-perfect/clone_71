@@ -78,5 +78,7 @@ build { server/terminal test/terminal_echo }
 
 build_boot_image { terminal test-terminal_echo }
 
+append qemu_args " -nographic "
+
 run_genode_until forever
 

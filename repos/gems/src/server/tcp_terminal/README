@@ -16,6 +16,6 @@ For an example of how to use the TCP terminal, please refer to the run script
 at 'gems/run/tcp_terminal.run'.
 
 
-For test, just make the "run/tcp_terminal", and wait for the execution to localport
-print out.
+For test, just make the "run/tcp_terminal", and wait for the execution to 
+"DNS server" print out.
 In anther terminal, use "telnet localhost 5555" to link in and write strings.

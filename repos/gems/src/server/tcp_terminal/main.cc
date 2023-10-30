@@ -25,6 +25,7 @@
 
 #include <libc/component.h>
 #include <pthread.h>
+#include <mini_c/stdio.h>
 
 /* socket API */
 #include <unistd.h>
@@ -231,6 +232,7 @@ class Open_socket : public Genode::List<Open_socket>::Element
 
 			/* read from socket */
 			_read_buf_bytes_used = ::read(_sd, _read_buf, sizeof(_read_buf));
+			// Genode::log("_read_buf_bytes_used is ", _read_buf_bytes_used);
 
 			if (_read_buf_bytes_used == 0) {
 				close(_sd);
@@ -251,6 +253,7 @@ class Open_socket : public Genode::List<Open_socket>::Element
 			Genode::size_t num_bytes = Genode::min(dst_len, _read_buf_bytes_used -
 			                                       _read_buf_bytes_read);
 			Genode::memcpy(dst, _read_buf + _read_buf_bytes_read, num_bytes);
+			// Genode::log("when run this? read_buffer()[1]");
 
 			_read_buf_bytes_read += num_bytes;
 			if (_read_buf_bytes_read >= _read_buf_bytes_used)
@@ -260,6 +263,7 @@ class Open_socket : public Genode::List<Open_socket>::Element
 			if (_read_avail_sigh.valid() && !read_buffer_empty())
 				Genode::Signal_transmitter(_read_avail_sigh).submit();
 
+			// Genode::log("when run this? read_buffer()[2]");
 			return num_bytes;
 		}
 
@@ -511,6 +515,7 @@ class Terminal::Session_component : public Genode::Rpc_object<Session, Session_c
 				 * If read buffer was in use, look if more data is buffered in
 				 * the TCP/IP stack.
 				 */
+				// Genode::log("RRRRRRRRRRRRRRRRRRRRread(num_bytes=", num_bytes ,")[]");
 				if (num_bytes)
 					open_socket_pool()->update_sockets_to_watch();
 			});
@@ -530,6 +535,7 @@ class Terminal::Session_component : public Genode::Rpc_object<Session, Session_c
 				                        _io_buffer.local_addr<char>(),
 				                        num_bytes);
 
+				// Genode::log("WWWWWWWWWWWWWWWWWWWWwrite(num_bytes=", num_bytes, ")[]");
 				if (written_bytes < 0) {
 					Genode::error("write error, dropping data");
 					written_bytes = 0;
@@ -573,6 +579,7 @@ class Terminal::Root_component : public Genode::Root_component<Session_component
 		Session_component *_create_session(const char *args)
 		{
 			using namespace Genode;
+			// Genode::log(args);
 
 			/*
 			 * XXX read I/O buffer size from args
@@ -580,6 +587,12 @@ class Terminal::Root_component : public Genode::Root_component<Session_component
 			Genode::size_t io_buffer_size = 4096;
 
 			Session_label  const label = label_from_args(args);
+			// , diag=0, label="test-terminal_echo -> ", ram_quota=1229, cap_quota=2
+			// size_t args_len = strlen(args);
+			// for (int i = 0; i < args_len + 1; ++i){
+			// 	Genode::log("[[[[[[[[[[[", args[i], "]]]]]]]]]]]");
+			// }
+
 			Session_policy const policy(label, _config);
 
 			if (!policy.has_attribute("port")) {
@@ -590,6 +603,7 @@ class Terminal::Root_component : public Genode::Root_component<Session_component
 			unsigned const tcp_port = policy.attribute_value("port", 0U);
 
 			Session_component *session = nullptr;
+			// Genode::log(policy);
 
 			if (policy.has_attribute("ip")) {
 				typedef Genode::String<16> Ip;
@@ -597,10 +611,12 @@ class Terminal::Root_component : public Genode::Root_component<Session_component
 				Libc::with_libc([&] () {
 					session = new (md_alloc())
 						Session_component(_env, io_buffer_size, ip_addr.string(), tcp_port); });
+				Genode::log("Here we init a client.");
 			} else {
 				Libc::with_libc([&] () {
 					session = new (md_alloc())
 						Session_component(_env, io_buffer_size, tcp_port); });
+				Genode::log("Here we init a server.");
 			}
 			return session;
 		}
