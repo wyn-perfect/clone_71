@@ -37,6 +37,7 @@
 #include <sys/ioctl.h>
 
 static bool const verbose = true;
+static int const RWINFO = 0;
 
 
 class Open_socket : public Genode::List<Open_socket>::Element
@@ -515,7 +516,9 @@ class Terminal::Session_component : public Genode::Rpc_object<Session, Session_c
 				 * If read buffer was in use, look if more data is buffered in
 				 * the TCP/IP stack.
 				 */
-				// Genode::log("RRRRRRRRRRRRRRRRRRRRread(num_bytes=", num_bytes ,")[]");
+				if (RWINFO){
+					Genode::log("RRRRRRRRRRRRRRRRRRRRread(num_bytes=", num_bytes ,")[]");
+				}
 				if (num_bytes)
 					open_socket_pool()->update_sockets_to_watch();
 			});
@@ -535,7 +538,9 @@ class Terminal::Session_component : public Genode::Rpc_object<Session, Session_c
 				                        _io_buffer.local_addr<char>(),
 				                        num_bytes);
 
-				// Genode::log("WWWWWWWWWWWWWWWWWWWWwrite(num_bytes=", num_bytes, ")[]");
+				if (RWINFO){
+					Genode::log("WWWWWWWWWWWWWWWWWWWWwrite(num_bytes=", num_bytes, ")[]");
+				}
 				if (written_bytes < 0) {
 					Genode::error("write error, dropping data");
 					written_bytes = 0;
