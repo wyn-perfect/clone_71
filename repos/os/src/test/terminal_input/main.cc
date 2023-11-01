@@ -168,7 +168,7 @@ void Component::construct(Env &env) {
 	// Genode::Milliseconds time_end = _timer.curr_time().trunc_to_plain_ms();
 	// Genode::log("Client test finish at ", time_end);
 
-	// these lines drill the RX packets, may be a member function 
+	// these lines drain the RX packets, maybe added to member function 
 	Genode::log("Tx cnt: ", PING_PONG_NUM, " Rx cnt: ", main.info_cnt_sum);
 	while (PING_PONG_NUM > main.info_cnt_sum){
 		main.handle_read_avail();

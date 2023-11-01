@@ -139,6 +139,6 @@ run_genode_until forever
 # this now, which can be addressed by binding ID 
 # Tx/Rx requests.
 # 
-# server executes: `make run/tcptr_server`
-# client executes: `make run/tcptr_client`
+# server executes: `make run/tcptest_server`
+# client executes: `make run/tcptest_client`
 #
