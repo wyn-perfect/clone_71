@@ -75,7 +75,7 @@ class Open_socket : public Genode::List<Open_socket>::Element
 		 * the 'rfds' set of 'select()' until a read request from the terminal
 		 * client comes in.
 		 */
-		enum { READ_BUF_SIZE = 4096 };
+		enum { READ_BUF_SIZE = (1 << 15) };
 		char           _read_buf[READ_BUF_SIZE];
 		Genode::size_t _read_buf_bytes_used;
 		Genode::size_t _read_buf_bytes_read;

@@ -17,13 +17,13 @@
 #include <terminal_session/connection.h>
 #include <timer_session/connection.h>
 
-const int PING_PONG_NUM = 1 << 15;
+const int PING_PONG_NUM = 1 << 16;
 
-const int READ_BUF_SIZE = 4096;
+const int READ_BUF_SIZE = (1 << 15);
 
-// Keep WRITE_QUEUE_DEPTH x WRITE_BUFFER_SIZE = READ_BUF_SIZE
-const int WRITE_QUEUE_DEPTH = 16;
+// We keep WRITE_QUEUE_DEPTH x WRITE_BUFFER_SIZE = READ_BUF_SIZE
 const int WRITE_BUFFER_SIZE = 256;
+const int WRITE_QUEUE_DEPTH = (READ_BUF_SIZE / WRITE_BUFFER_SIZE);
 
 using namespace Genode;
 
@@ -47,15 +47,6 @@ struct Main
 
 	String<128> intro {
 "--- Terminal echo test started, now you can type characters to be echoed. ---\n" };
-	String<255> str256B {
-"111111111111111111111111111111111111111111111111111111111111111\
-1111111111111111111111111111111111111111111111111111111111111111\
-1111111111111111111111111111111111111111111111111111111111111111\
-111111111111111111111111111111111111111111111111111111111111111" };
-	String<255> str128B {
-"111111111111111111111111111111111111111111111111111111111111111\
-111111111111111111111111111111111111111111111111111111111111111" };
-	String<255> str16B {"111111111111111" };
 
 
 	void handle_read_avail()
@@ -108,10 +99,21 @@ struct Main
 
 	size_t Send2Server(const char* info, size_t size){
 		// this function produce an entry in write buffer
-		while (writeID_tail - writeID_head >= WRITE_QUEUE_DEPTH - 1){
-			// Write Queue Pending...
-			handle_read_avail();
-		};
+
+		// Buffering strategy #1
+		// while (writeID_tail - writeID_head >= WRITE_QUEUE_DEPTH - 1){
+		// 	// Write Queue Pending...
+		// 	handle_read_avail();
+		// };
+
+		// Buffering strategy #2
+		if (writeID_tail - writeID_head >= WRITE_QUEUE_DEPTH - 1){
+			while (writeID_tail - writeID_head >= WRITE_QUEUE_DEPTH / 2){
+				// Write Queue Pending...
+				handle_read_avail();
+			};
+		}
+
 		Genode::memcpy(write_buffer + wq_pos(writeID_tail), info, size);
 		terminal.write(write_buffer + wq_pos(writeID_tail), size);
 		// Genode::log("Send2Server(B): ", size);
@@ -131,8 +133,8 @@ struct Main
 		// terminal.write(intro.string(), intro.length() + 1);
 		// terminal.write("123456789\n", 10);
 
-		Genode::log(str16B.string());
-		Genode::log(" len = ", str16B.length());
+		Genode::log(intro.string());
+		Genode::log(" len = ", intro.length());
 
 		// Genode::Milliseconds time_beg = _timer.curr_time().trunc_to_plain_ms();
 		// Genode::log("Client test start at ", time_beg);
@@ -151,9 +153,25 @@ struct Main
 };
 
 void Component::construct(Env &env) { 
+	String<511> str512B {
+"111111111111111111111111111111111111111111111111111111111111111\
+1111111111111111111111111111111111111111111111111111111111111111\
+1111111111111111111111111111111111111111111111111111111111111111\
+1111111111111111111111111111111111111111111111111111111111111111\
+1111111111111111111111111111111111111111111111111111111111111111\
+1111111111111111111111111111111111111111111111111111111111111111\
+1111111111111111111111111111111111111111111111111111111111111111\
+111111111111111111111111111111111111111111111111111111111111111" };
+	String<255> str256B {
+"111111111111111111111111111111111111111111111111111111111111111\
+1111111111111111111111111111111111111111111111111111111111111111\
+1111111111111111111111111111111111111111111111111111111111111111\
+111111111111111111111111111111111111111111111111111111111111111" };
 	String<255> str128B {
 "111111111111111111111111111111111111111111111111111111111111111\
 111111111111111111111111111111111111111111111111111111111111111" };
+	String<255> str64B {
+"11111111111111111111111111111111111111111111111111111111111111" };
 	static Main main(env); 
 	// main.Send2Server("11111111", 9);
 

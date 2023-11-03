@@ -18,7 +18,7 @@
 
 using namespace Genode;
 
-const int READ_BUF_SIZE = 4096;
+const int READ_BUF_SIZE = (1 << 15);
 
 struct Main
 {
