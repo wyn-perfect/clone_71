@@ -26,8 +26,10 @@
 #include <timer_session/connection.h>
 
 
-const int RPC_BUFFER_LEN = 4096 * 16; // 64KB
-const int MAINMEM_STORE_LEN = 4096 * 1024 * 8; // 32 MB
+// const int RPC_BUFFER_LEN = 4096 * 16; // 64KB
+// const int MAINMEM_STORE_LEN = 4096 * 1024 * 8; // 32 MB
+const int RPC_BUFFER_LEN = 64;
+const int MAINMEM_STORE_LEN = 64;
 const int CLIENT_NUM = 4;
 const int STORE_LEN_INT = MAINMEM_STORE_LEN / sizeof(int) / CLIENT_NUM;
 const int MAINMEM_STORE_BEGS[CLIENT_NUM] = {STORE_LEN_INT*0,
@@ -212,4 +214,25 @@ void Component::construct(Genode::Env &env)
 	Timer::Connection _timer(env);
 	static RPCplus::Main main(env, _timer);
 
+	Genode::Heap heap{env.ram(), env.rm()};
+	Genode::log("Time malloc test start: ", _timer.curr_time().trunc_to_plain_ms());
+
+	void* buf[6000];
+	int break_num = 0;
+
+	for (int i = 0; i < 5000; ++i){
+		buf[i] = heap.alloc(1<<12);
+		// Genode::log("malloc result: ", i, "@", buf[i]);
+		if (i > 0 && (genode_uint64_t)(buf[i]) - (genode_uint64_t)(buf[i-1]) != (1<<12)){
+			// Genode::log("not continous at: ", i, "'th addr.");
+			break_num += 1;
+		}
+	}
+	Genode::log("ADDR break number: ", break_num);
+
+	Genode::log("Time malloc test end: ", _timer.curr_time().trunc_to_plain_ms());
+
+	for (int i = 0; i < 5000; ++i){
+		heap.free(buf[i], 1<<12);
+	}
 }

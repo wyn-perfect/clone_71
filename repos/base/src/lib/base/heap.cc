@@ -82,6 +82,8 @@ Heap::_allocate_dataspace(size_t size, bool enforce_separate_metadata)
 {
 	using Result = Alloc_ds_result;
 
+	Genode::log("In Heap, _allocate_dataspace is called: ", size);
+
 	return _ds_pool.ram_alloc->try_alloc(size).convert<Result>(
 
 		[&] (Ram_dataspace_capability ds_cap) -> Result {
@@ -238,6 +240,8 @@ Allocator::Alloc_result Heap::try_alloc(size_t size)
 {
 	if (size == 0)
 		error("attempt to allocate zero-size block from heap");
+	
+	// Genode::log("Heap try_alloc called.");
 
 	/* serialize access of heap functions */
 	Mutex::Guard guard(_mutex);
