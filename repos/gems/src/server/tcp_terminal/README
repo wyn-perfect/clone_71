@@ -49,3 +49,8 @@ consume to half when buffer is about full
 | 8K |  -  |  4596.437  |  -  |  -  |
 | 16K  |  -  |  5899.360  |  -  |  -  |
 | 32K  |  -  |  7923.588  |  -  |  -  |
+
+
+#### Change the host network host from ethernet to ib card
+
+This **does not** change the overall performance
