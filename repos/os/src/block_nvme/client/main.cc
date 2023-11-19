@@ -13,7 +13,7 @@
 对1000个block操作---读：62次/s    写：81次/s
 对100个block操作 ---读：270次/s   写：330次/s
 对10个block操作  ---读：330次/s   写：430次/s
-对1个block操作   ---读：340次/s   写：440次/s
+对1个block操作   ---读：340次/s   写：440次/s 
 */
 
 
@@ -98,7 +98,7 @@ struct Block_demo::Test
 			_tx    += length / _info.block_size;
 			_bytes += length;
 
-			log("job ", job.id, ": writing ", length, " bytes at ", offset);
+			// log("job ", job.id, ": writing ", length, " bytes at ", offset);
 			memcpy(dst, _write_buffer, length);
 		}
 
@@ -111,9 +111,9 @@ struct Block_demo::Test
 			_rx    += length / _info.block_size;
 			_bytes += length;
 
-			log("job ", job.id, ": got ", length, " bytes at ", offset);
+			// log("job ", job.id, ": got ", length, " bytes at ", offset);
 			memcpy(_read_buffer, src, length);
-			log(job.id, ": ",_read_buffer[0], " ", _read_buffer[1]);
+			// log(job.id, ": ",_read_buffer[0], " ", _read_buffer[1]);
 		}
 
 		/**
@@ -123,7 +123,7 @@ struct Block_demo::Test
 		{
 			
 			_completed++;
-			log("job ", job.id, ": ", job.operation(), ", completed");
+			// log("job ", job.id, ": ", job.operation(), ", completed");
 			if (!success)
 				error("processing ", job.operation(), " failed");
 			destroy(_alloc, &job);
@@ -176,13 +176,19 @@ struct Block_demo::Test
 			_block->sigh(_block_io_sigh);
 			_info = _block->info();
 			log("block size is ", _info.block_size);
-			loop = 100;
+			loop = 1000000;
 			begin = _timer->curr_time().trunc_to_plain_ms().value;
+
+			int blk_total = (1 << 20);
+			int blk_cur = 1;
+			int blk_step = 2;
 			for (int i = 0; i < loop; i++)
 			{
 				_write_buffer[0] = i;
-				_spawn_job(1, 1, Block::Operation::Type::READ);
-				
+				_spawn_job(blk_cur, blk_step, Block::Operation::Type::WRITE);
+				blk_cur += blk_step;
+				if (blk_cur - 1 > blk_total - blk_step) 
+					blk_cur = 1;
 			}
 			_handle_block_io();
 
