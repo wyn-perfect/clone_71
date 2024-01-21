@@ -37,7 +37,7 @@
 #include <sys/ioctl.h>
 
 static bool const verbose = true;
-static int const RWINFO = 0;
+static int const RWINFO = 1;
 
 
 class Open_socket : public Genode::List<Open_socket>::Element
@@ -161,6 +161,8 @@ class Open_socket : public Genode::List<Open_socket>::Element
 		 */
 		int sd() const { return _sd; }
 
+		int read_buf_bytes_used() const { return _read_buf_bytes_used; }
+
 		/**
 		 * Return true if TCP connection is established
 		 *
@@ -176,6 +178,8 @@ class Open_socket : public Genode::List<Open_socket>::Element
 		void connected_sigh(Genode::Signal_context_capability sigh)
 		{
 			_connected_sigh = sigh;
+			
+			Genode::log("connected_sigh at _listen_sd: ", _listen_sd);
 
 			/*
 			 * Inform client about the finished initialization of the terminal
@@ -192,6 +196,8 @@ class Open_socket : public Genode::List<Open_socket>::Element
 		void read_avail_sigh(Genode::Signal_context_capability sigh)
 		{
 			_read_avail_sigh = sigh;
+
+			Genode::log("read_avail_sigh at _listen_sd: ", _listen_sd);
 
 			/* if read data is available right now, deliver signal immediately */
 			if (!read_buffer_empty() && _read_avail_sigh.valid())
@@ -210,6 +216,8 @@ class Open_socket : public Genode::List<Open_socket>::Element
 			socklen_t len = sizeof(addr);
 			_sd = accept(_listen_sd, &addr, &len);
 
+			Genode::log("accept_remote_connection at _listen_sd: ", _listen_sd);
+
 			if (connection_established())
 				Genode::log("connection established");
 
@@ -226,6 +234,8 @@ class Open_socket : public Genode::List<Open_socket>::Element
 		 */
 		void fill_read_buffer_and_notify_client()
 		{
+			Genode::log("fill_read_buffer_and_notify_client at _listen_sd: ", _listen_sd);
+
 			if (_read_buf_bytes_used) {
 				Genode::warning("read buffer already in use");
 				return;
@@ -251,6 +261,8 @@ class Open_socket : public Genode::List<Open_socket>::Element
 		 */
 		Genode::size_t read_buffer(char *dst, Genode::size_t dst_len)
 		{
+			Genode::log("read_buffer at _listen_sd: ", _listen_sd);
+
 			Genode::size_t num_bytes = Genode::min(dst_len, _read_buf_bytes_used -
 			                                       _read_buf_bytes_read);
 			Genode::memcpy(dst, _read_buf + _read_buf_bytes_read, num_bytes);
@@ -335,11 +347,17 @@ class Open_socket_pool
 			}
 		}
 
+		int get_count()
+		{
+			return _count;
+		}
+
 		void insert(Open_socket *s)
 		{
 			Genode::Mutex::Guard guard(_mutex);
 			_list.insert(s);
 			_count++;
+			Genode::log("Socket pool insert with: ", s->listen_sd(), " and ", s->sd());
 			_wakeup_select();
 		}
 
@@ -440,6 +458,7 @@ Open_socket_pool *open_socket_pool(Genode::Env * env = nullptr)
 }
 
 
+// server side
 Open_socket::Open_socket(int tcp_port)
 :
 	_listen_sd(_remote_listen(tcp_port)), _sd(-1),
@@ -449,6 +468,7 @@ Open_socket::Open_socket(int tcp_port)
 }
 
 
+// client side
 Open_socket::Open_socket(char const * ip_addr, int tcp_port)
 :
 	_listen_sd(_remote_connect(ip_addr, tcp_port)), _sd(_listen_sd),
@@ -475,21 +495,27 @@ class Terminal::Session_component : public Genode::Rpc_object<Session, Session_c
 {
 	private:
 
+		int is_server;
 		Genode::Attached_ram_dataspace _io_buffer;
+		Open_socket socket1;
 
 	public:
 
 		Session_component(Genode::Env &env, Genode::size_t io_buffer_size, int tcp_port)
 		:
 			Open_socket(tcp_port),
-			_io_buffer(env.ram(), env.rm(), io_buffer_size)
+			is_server(1),
+			_io_buffer(env.ram(), env.rm(), io_buffer_size),
+			socket1(tcp_port + 1)
 		{ }
 
 		Session_component(Genode::Env &env, Genode::size_t io_buffer_size,
 		                  char const * ip_addr, int tcp_port)
 		:
 			Open_socket(ip_addr, tcp_port),
-			_io_buffer(env.ram(), env.rm(), io_buffer_size)
+			is_server(0),
+			_io_buffer(env.ram(), env.rm(), io_buffer_size),
+			socket1(0)
 		{ }
 
 		/********************************
@@ -509,18 +535,36 @@ class Terminal::Session_component : public Genode::Rpc_object<Session, Session_c
 		{
 			Genode::size_t num_bytes = 0;
 			Libc::with_libc([&] () {
-				num_bytes = read_buffer(_io_buffer.local_addr<char>(),
-				                        Genode::min(_io_buffer.size(), dst_len));
-
-				/*
-				 * If read buffer was in use, look if more data is buffered in
-				 * the TCP/IP stack.
-				 */
-				if (RWINFO){
-					Genode::log("RRRRRRRRRRRRRRRRRRRRread(num_bytes=", num_bytes ,")[]");
+				if (read_buf_bytes_used() > 0){
+					num_bytes = read_buffer(_io_buffer.local_addr<char>(),
+											Genode::min(_io_buffer.size(), dst_len));
+					/*
+					* If read buffer was in use, look if more data is buffered in
+					* the TCP/IP stack.
+					*/
+					if (RWINFO && num_bytes){
+						Genode::log("RRRRRRRRRRRRRRRRRRRRread(num_bytes=", num_bytes ,")[]");
+						Genode::log("THE COUNT of LINK is: ", open_socket_pool()->get_count());
+					}
+					if (num_bytes)
+						open_socket_pool()->update_sockets_to_watch();
 				}
-				if (num_bytes)
-					open_socket_pool()->update_sockets_to_watch();
+
+				// repeat it for socket1
+				if (socket1.read_buf_bytes_used() > 0){
+					num_bytes = socket1.read_buffer(_io_buffer.local_addr<char>(),
+											Genode::min(_io_buffer.size(), dst_len));
+					/*
+					* If read buffer was in use, look if more data is buffered in
+					* the TCP/IP stack.
+					*/
+					if (RWINFO && num_bytes){
+						Genode::log("RRRRRRRRRRRRRRRRRRRRread(num_bytes=", num_bytes ,")[]");
+						Genode::log("THE COUNT of LINK is: ", open_socket_pool()->get_count());
+					}
+					if (num_bytes)
+						open_socket_pool()->update_sockets_to_watch();
+				}
 			});
 			return num_bytes;
 		}
@@ -558,11 +602,13 @@ class Terminal::Session_component : public Genode::Rpc_object<Session, Session_c
 		void read_avail_sigh(Genode::Signal_context_capability sigh) override
 		{
 			Open_socket::read_avail_sigh(sigh);
+			socket1.read_avail_sigh(sigh);
 		}
 
 		void connected_sigh(Genode::Signal_context_capability sigh) override
 		{
 			Open_socket::connected_sigh(sigh);
+			socket1.connected_sigh(sigh);
 		}
 
 		void size_changed_sigh(Genode::Signal_context_capability) override { }
@@ -620,8 +666,9 @@ class Terminal::Root_component : public Genode::Root_component<Session_component
 			} else {
 				Libc::with_libc([&] () {
 					session = new (md_alloc())
-						Session_component(_env, io_buffer_size, tcp_port); });
-				Genode::log("Here we init a server.");
+						Session_component(_env, io_buffer_size, tcp_port); 
+					});
+				Genode::log("Here we init servers.");
 			}
 			return session;
 		}
