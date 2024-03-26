@@ -25,7 +25,7 @@
 
 #include <libc/component.h>
 #include <pthread.h>
-#include <mini_c/stdio.h>
+//#include <mini_c/stdio.h>
 
 /* socket API */
 #include <unistd.h>
@@ -36,9 +36,23 @@
 #include <netinet/in.h>
 #include <sys/ioctl.h>
 
+/**
+* verbose:用于控制是否输出详细的日志信息
+* RWINFO：判断是否有读写输出
+*/
 static bool const verbose = true;
 static int const RWINFO = 1;
 
+/**
+ * Open_socket类： 用于管理打开的Socket连接
+ * _listen_sd：用于监听新的 TCP 连接的套接字描述符
+ * _sd：用于已建立的 TCP 连接的套接字描述符
+ * _connected_sigh：用于通知已建立的连接的信号处理器
+ * _read_avail_sigh：用于通知有可读数据的信号处理器。
+ * _read_buf：存储接收到的数据的缓冲区。
+ * _read_buf_bytes_used：缓冲区中已使用的字节数
+ * _read_buf_bytes_read：缓冲区中已读取的字节数
+*/
 
 class Open_socket : public Genode::List<Open_socket>::Element
 {
@@ -85,6 +99,13 @@ class Open_socket : public Genode::List<Open_socket>::Element
 		 *
 		 * \return socket descriptor used for the remote TCP connection
 		 */
+
+		/**
+		 * _remote_listen()：用于创建监听套接字并绑定到指定端口的静态成员函数
+		 * PF_INET: 指定IPv4协议族。
+		 * SOCK_STREAM: 指定使用TCP协议。
+		 * IPPROTO_TCP: 指定TCP协议。
+		*/
 		static int _remote_listen(int tcp_port)
 		{
 			int listen_sd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -92,18 +113,18 @@ class Open_socket : public Genode::List<Open_socket>::Element
 				Genode::error("socket creation failed");
 				return -1;
 			}
-
+			 // 定义用于绑定的地址结构体 sockaddr_in
 			sockaddr_in sockaddr;
-			sockaddr.sin_family = PF_INET;
-			sockaddr.sin_port = htons (tcp_port);
-			sockaddr.sin_addr.s_addr = INADDR_ANY;
-
+			sockaddr.sin_family = PF_INET; //设置地址族为 IPv4
+			sockaddr.sin_port = htons (tcp_port); //设置端口号 Host to Network Short（主机字节序转网络字节序，其中 Short 表示 16 位整数）。
+			sockaddr.sin_addr.s_addr = INADDR_ANY; // 将 IP 地址设置为 INADDR_ANY，表示绑定到所有可用的网络接口上
+			//bind：将套接字绑定到一个地址，这里是将 listen_sd 套接字绑定到 sockaddr 结构体所代表的地址。sockaddr 结构体包含了IP地址和端口号。
 			if (bind(listen_sd, (struct sockaddr *)&sockaddr, sizeof(sockaddr))) {
 				Genode::error("bind to port ", tcp_port, " failed");
 				return -1;
 			}
 
-			if (listen(listen_sd, 1)) {
+			if (listen(listen_sd, 1)) { //当创建和绑定好套接字后 开始监听连接，等待客户端的连接请求
 				Genode::error("listen failed");
 				return -1;
 			}
@@ -114,7 +135,7 @@ class Open_socket : public Genode::List<Open_socket>::Element
 
 		/**
 		 * Establish remote connection
-		 *
+		 * 客户端创建一个套接字 连接服务器端套接字的过程
 		 * \return socket descriptor used for the remote TCP connection
 		 */
 		static int _remote_connect(char const * ip, int tcp_port)
@@ -140,7 +161,7 @@ class Open_socket : public Genode::List<Open_socket>::Element
 		}
 
 	public:
-
+		// 定义了open_socket类的公共函数
 		Open_socket(int tcp_port);
 		Open_socket(char const * ip_addr, int tcp_port);
 
@@ -183,7 +204,7 @@ class Open_socket : public Genode::List<Open_socket>::Element
 
 			/*
 			 * Inform client about the finished initialization of the terminal
-			 * session
+			 * session  通知客户端终端会话的初始化已完成。
 			 */
 			if (_connected_sigh.valid() && connection_established())
 				Genode::Signal_transmitter(_connected_sigh).submit();
@@ -206,7 +227,7 @@ class Open_socket : public Genode::List<Open_socket>::Element
 
 		/**
 		 * Accept new connection, defining the connection's socket descriptor
-		 *
+		 *  函数的作用即：新连接到来时，通过accept函数接受连接并通知客户端连接已建立。
 		 * This function is called by the 'select()' thread when a new
 		 * connection is pending.
 		 */
@@ -242,6 +263,7 @@ class Open_socket : public Genode::List<Open_socket>::Element
 			}
 
 			/* read from socket */
+			
 			_read_buf_bytes_used = ::read(_sd, _read_buf, sizeof(_read_buf));
 			// Genode::log("_read_buf_bytes_used is ", _read_buf_bytes_used);
 
@@ -322,24 +344,24 @@ class Open_socket_pool
 		void _wakeup_select()
 		{
 			char c = 0;
-			::write(sync_pipe_fds[1], &c, sizeof(c));
+			::write(sync_pipe_fds[1], &c, sizeof(c));//该函数通过往管道中写入一个字节的方式来唤醒阻塞在 select() 函数上的线程。
 		}
 
 		static void * entry(void *arg) {
 			Open_socket_pool * pool = reinterpret_cast<Open_socket_pool *>(arg);
 
 			for (;;)
-				pool->watch_sockets_for_incoming_data();
+				pool->watch_sockets_for_incoming_data(); //这个主要的事件循环，用于监视套接字上的数据
 
 			return nullptr;
 		}
 
 	public:
-
+		//该构造函数在对象创建时初始化了一些成员变量，包括 _count 和 sync_pipe_fds，并启动了一个新的线程执行 entry 函数，该线程将负责执行 watch_sockets_for_incoming_data() 循环。如果线程创建失败，将抛出异常。
 		Open_socket_pool(Genode::Env &env)
 		: _count(0)
 		{
-			pipe(sync_pipe_fds);
+			pipe(sync_pipe_fds);//创建一个管道，用于同步 select() 循环和入口线程之间的操作。sync_pipe_fds 数组将包含新创建管道的两个文件描述符。
 
 			if (pthread_create(&_select, nullptr, entry, this)) {
 				class Startup_select_thread_failed : Genode::Exception { };
@@ -371,7 +393,7 @@ class Open_socket_pool
 
 		void update_sockets_to_watch()
 		{
-			_wakeup_select();
+			_wakeup_select();//这个函数充当了一个触发器，用于在需要时唤醒 select() 循环，以便及时处理套接字的变化。
 		}
 
 		void watch_sockets_for_incoming_data()
@@ -383,7 +405,7 @@ class Open_socket_pool
 				Genode::Mutex::Guard guard(_mutex);
 
 				/* collect file descriptors of all open sessions */
-				FD_ZERO(&rfds);
+				FD_ZERO(&rfds);//清空文件描述符集
 				for (Open_socket *s = _list.first(); s; s = s->next()) {
 
 					/*
@@ -398,7 +420,7 @@ class Open_socket_pool
 					 * 'select' to notify us about a new connection.
 					 */
 					if (!s->connection_established()) {
-						nfds = Genode::max(nfds, s->listen_sd());
+						nfds = Genode::max(nfds, s->listen_sd());//如果套接字是监听套接字，且连接尚未建立，则将其添加到 select() 监听的套接字集合中。
 						FD_SET(s->listen_sd(), &rfds);
 						continue;
 					}
@@ -410,7 +432,7 @@ class Open_socket_pool
 					 * up in the TCP/IP stack.
 					 */
 					nfds = Genode::max(nfds, s->sd());
-					if (s->read_buffer_empty())
+					if (s->read_buffer_empty())////如果套接字的连接已经建立，并且缓冲区可以接收新数据，将其添加到 select() 监听的套接字集合中。
 						FD_SET(s->sd(), &rfds);
 				}
 
@@ -436,17 +458,18 @@ class Open_socket_pool
 				for (Open_socket *s = _list.first(); s; s = s->next()) {
 
 					/* look for new connection */
-					if (!s->connection_established()) {
+					if (!s->connection_established()) {//如果套接字是监听套接字，且有新连接，则调用 accept_remote_connection()
 						if (FD_ISSET(s->listen_sd(), &rfds))
 							s->accept_remote_connection();
 						continue;
 					}
 
 					/* connection is established, look for incoming data */
-					if (FD_ISSET(s->sd(), &rfds))
+					if (FD_ISSET(s->sd(), &rfds)) //果套接字的连接已经建立，并且有数据可读，则调用 
 						s->fill_read_buffer_and_notify_client();
 				}
 			}
+			
 		}
 };
 
@@ -641,7 +664,7 @@ class Terminal::Root_component : public Genode::Root_component<Session_component
 			// , diag=0, label="test-terminal_echo -> ", ram_quota=1229, cap_quota=2
 			// size_t args_len = strlen(args);
 			// for (int i = 0; i < args_len + 1; ++i){
-			// 	Genode::log("[[[[[[[[[[[", args[i], "]]]]]]]]]]]");
+			//  	Genode::log("[[[[[[[[[[[", args[i], "]]]]]]]]]]]");
 			// }
 
 			Session_policy const policy(label, _config);
@@ -692,7 +715,6 @@ class Terminal::Root_component : public Genode::Root_component<Session_component
 struct Main
 {
 	Genode::Env &_env;
-
 	Genode::Attached_rom_dataspace  _config_rom { _env, "config" };
 	Genode::Xml_node                _config     { _config_rom.xml() };
 
@@ -700,6 +722,7 @@ struct Main
 
 	/* create root interface for service */
 	Terminal::Root_component _root { _env, _config, _sliced_heap };
+
 
 	Main(Genode::Env &env) : _env(env)
 	{
@@ -712,6 +735,7 @@ struct Main
 		/* announce service at our parent */
 		_env.parent().announce(env.ep().manage(_root));
 	}
+	
 };
 
 void Libc::Component::construct(Libc::Env &env) { static Main main(env); }

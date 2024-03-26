@@ -15,56 +15,73 @@
 /* Genode includes */
 #include <base/component.h>
 #include <terminal_session/connection.h>
+#include <timer_session/connection.h>
 
 using namespace Genode;
 
-const int READ_BUF_SIZE = (1 << 15);
+const int READ_BUF_SIZE = (1 << 16);//表示服务器端读缓冲区的大小
 
+//定义main结构
 struct Main
 {
-	Terminal::Connection terminal;
-	Signal_handler<Main> read_avail;
-	char read_buffer[READ_BUF_SIZE];
+	Terminal::Connection terminal; //包含了终端连接对象 terminal
+	Signal_handler<Main> read_avail;//创建一个信号处理对象
+	Timer::Connection _timer;
+	char read_buffer[READ_BUF_SIZE];// 服务器端的一个读缓冲区的大小
+
+	int t0 = 0;
+	int dif = 0;
+	size_t rec_bytes = 0;
+	int m = 0;
 
 	String<128> intro {
 "--- Terminal echo test started, now you can type characters to be echoed. ---\n" };
 
+	//用于于处理读取可用信号的回调函数 handle_read_avail
 	void handle_read_avail()
 	{	
-		size_t num_bytes = terminal.read(read_buffer, READ_BUF_SIZE);
-		// log("got ", num_bytes, " byte(s)");
-		size_t info_cnt = 0;
-		size_t info_head = 0;
-		size_t info_tail = 0;
-		size_t info_len = 0;
-		for (; info_tail < num_bytes; info_tail++) {
-			if (read_buffer[info_tail] == '\0') {
-				info_len = info_tail - info_head;
-				// terminal.write("\n", 1); 
-				// Genode::log("info_len is ", info_len);
-				// WE CAN PROCESS THE BACK INFO HERE
-				terminal.write(read_buffer + info_head, info_len + 1);
-				info_head = info_tail + 1;
-				info_cnt += 1;
-			}
-			// terminal.write(&read_buffer[i], 1);
+		Genode::Microseconds server_read_start = _timer.curr_time().trunc_to_plain_us();
+		int t1 = (int)server_read_start.value;
+		if(t0==0){
+			t0=t1;
 		}
-		// read_buffer[carriage_index] = '\0';
+		size_t num_bytes = terminal.read(read_buffer+rec_bytes, READ_BUF_SIZE-rec_bytes);
+		//size_t num_bytes = terminal.read(read_buffer, READ_BUF_SIZE);
+		rec_bytes+=num_bytes;
+		log("got ", num_bytes, " byte(s)");
 
-		// Genode::log("info_cnt is ", info_cnt);
-
-		// terminal.write(read_buffer, carriage_index);
-		// Genode::log(carriage_index);
-		// terminal.write("\n", 2);
+		
+		if (read_buffer[rec_bytes-1] == '\0') {//找到某个请求包的结束位置
+			
+			Genode::Microseconds server_write_start = _timer.curr_time().trunc_to_plain_us();
+			int t2 =(int)server_write_start.value;
+			t1=t0;
+			t0=0;
+			dif  = t2 - t1;
+			
+			int check[3] = {t1,t2,dif};
+			for(int i = 0;i<3;i++){
+				for(int j =0 ;j<4;j++){
+					read_buffer[rec_bytes]=char(check[i]);
+					check[i]>>=8;
+					rec_bytes+=1;
+				}
+			}
+			read_buffer[rec_bytes]='\0';
+			terminal.write(read_buffer, rec_bytes+1);
+			rec_bytes = 0;
+		}
 	}
-
 	Main(Env &env) : terminal(env),
-	                 read_avail(env.ep(), *this, &Main::handle_read_avail)
+	                 read_avail(env.ep(), *this, &Main::handle_read_avail),
+					 _timer(env)
 	{
 		terminal.read_avail_sigh(read_avail);
-		// terminal.write(intro.string(), intro.length() + 1);
-		// terminal.write("123456789\n", 10);
 	}
 };
 
-void Component::construct(Env &env) { static Main main(env); }
+void Component::construct(Env &env) 
+{ 
+	static Main main(env); 
+	
+}

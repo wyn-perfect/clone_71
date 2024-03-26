@@ -56,8 +56,8 @@ class Terminal::Session_client : public Genode::Rpc_client<Session>
 
 			/* instruct server to fill the I/O buffer */
 			Genode::size_t num_bytes = call<Rpc_read>(buf_size);
-
 			/* copy-out I/O buffer */
+			//Genode::log("rpc_read size= ",num_bytes );
 			num_bytes = Genode::min(num_bytes, buf_size);
 			Genode::memcpy(buf, _io_buffer.local_addr<char>(), num_bytes);
 
@@ -68,24 +68,28 @@ class Terminal::Session_client : public Genode::Rpc_client<Session>
 		{
 			Genode::Mutex::Guard _guard(_mutex);
 
-			Genode::size_t     written_bytes = 0;
+			Genode::size_t     written_bytes = 0;//成功写入终端会话总的字节数
 			char const * const src           = (char const *)buf;
 
 			while (written_bytes < num_bytes) {
 
-				/* copy payload to I/O buffer */
+				/* copy payload to I/O buffer */ 
 				Genode::size_t payload_bytes = Genode::min(num_bytes - written_bytes,
 				                                           _io_buffer.size());
+				
 				Genode::memcpy(_io_buffer.local_addr<char>(),
 				               src + written_bytes, payload_bytes);
 
 				/* tell server to pick up new I/O buffer content */
-				Genode::size_t written_payload_bytes = call<Rpc_write>(payload_bytes);
-
+				Genode::size_t written_payload_bytes = call<Rpc_write>(payload_bytes);//服务器实际写入的字节数
+				//Genode::log("2客户端写入iobuffer 通知服务器端去取了-");
+				//Genode::log("每次rpc-written 的值 = ",written_payload_bytes);
 				written_bytes += written_payload_bytes;
-
-				if (written_payload_bytes != payload_bytes)
+				if (written_payload_bytes != payload_bytes){//如果期待的与实际写入的不相符 说明写入操作发生问题 提前返回已经写入的数据总数
+					//Genode::log("written_payload_bytes = ",written_payload_bytes,"payload_bytes= ",payload_bytes,"提前返回已经成功写入的字节数");
 					return written_bytes;
+				}
+					
 
 			}
 			return written_bytes;

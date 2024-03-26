@@ -15,15 +15,18 @@
 #include <base/component.h>
 #include <base/log.h>
 #include <hello_session/connection.h>
-
+#include <vector>
+#include <iostream>
+using namespace std;
 
 void Component::construct(Genode::Env &env)
 {
 	Hello::Connection hello(env);
-
+	cout<<"你好";
 	hello.say_hello();
 
 	int const sum = hello.add(2, 5);
+	Genode::log("----------");
 	Genode::log("added 2 + 5 = ", sum);
 
 	Genode::log("hello test completed");

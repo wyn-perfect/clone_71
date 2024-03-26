@@ -1,0 +1,7 @@
+LICENSE   := MIT
+VERSION   := git
+DOWNLOADS := cw2vec.git
+
+URL(cw2vec) := https://github.com/dalinvip/cw2vec.git
+DIR(cw2vec) := src/app/cw2vec
+REV(cw2vec) := master

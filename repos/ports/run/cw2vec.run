@@ -1,0 +1,49 @@
+# 设置构建组件列表
+set build_components {
+    core init ld.lib.so libc.lib.so libm.lib.so libgcc_s.so.1
+    # 其他可能需要的组件
+}
+build $build_components
+
+# 配置 scenario
+append config {
+    <config>
+        <parent-provides>
+            <service name="ROM"/>
+            <service name="RAM"/>
+            <service name="IRQ"/>
+            <service name="IO_MEM"/>
+            <service name="IO_PORT"/>
+            <service name="CAP"/>
+            <service name="PD"/>
+            <service name="RM"/>
+            <service name="CPU"/>
+            <service name="LOG"/>
+            <service name="SIGNAL"/>
+        </parent-provides>
+        <default-route>
+            <any-service> <parent/> <any-child/> </any-service>
+        </default-route>
+        # 添加启动配置
+        <start name="cw2vec">
+            <resource name="RAM" quantum="128M"/>
+            <config>
+                # 添加其他需要的配置
+            </config>
+        </start>
+    </config>
+}
+install_config $config
+
+# 声明引导模块
+set boot_modules {
+    core init ld.lib.so libc.lib.so libm.lib.so libgcc_s.so.1 cw2vec
+    # 其他可能需要的模块
+}
+build_boot_image $boot_modules
+
+# 设置运行选项
+
+append qemu_args " -nographic "
+
+run_genode_until forever
